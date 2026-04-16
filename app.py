@@ -1,13 +1,13 @@
 import streamlit as st
-import tflite_runtime.interpreter as tflite
 import numpy as np
 import pandas as pd
 from PIL import Image
 from fpdf import FPDF
 from datetime import datetime
+import tflite_runtime.interpreter as tflite
 
-# ---------------- LOAD TFLITE MODEL ----------------
-interpreter = tf.lite.Interpreter(model_path="kidney_model.tflite")
+# ---------------- LOAD MODEL ----------------
+interpreter = tflite.Interpreter(model_path="kidney_model.tflite")
 interpreter.allocate_tensors()
 
 input_details = interpreter.get_input_details()
@@ -96,23 +96,23 @@ if page == "🏠 Prediction":
                 st.warning("Fill all details")
                 st.stop()
 
-            # Preprocess
+            # Preprocess image
             img_resized = img.resize((128,128))
-            img_array = np.array(img_resized)/255.0
+            img_array = np.array(img_resized) / 255.0
             img_array = np.expand_dims(img_array, axis=0).astype("float32")
 
-            # TFLite prediction
+            # Run TFLite model
             interpreter.set_tensor(input_details[0]['index'], img_array)
             interpreter.invoke()
             pred = interpreter.get_tensor(output_details[0]['index'])
 
-            confidence = float(np.max(pred)*100)
+            confidence = float(np.max(pred) * 100)
             result = classes[np.argmax(pred)]
 
             with col2:
                 st.subheader("Prediction Result")
 
-                # Chart
+                # Probability chart
                 df = pd.DataFrame({
                     "Condition": classes,
                     "Probability": pred[0]*100
@@ -120,7 +120,7 @@ if page == "🏠 Prediction":
                 st.bar_chart(df.set_index("Condition"))
 
                 if confidence < 70:
-                    st.warning("Low confidence")
+                    st.warning("⚠️ Low confidence")
                 else:
                     st.success(result)
                     st.info(f"Confidence: {confidence:.2f}%")
@@ -134,11 +134,11 @@ if page == "🏠 Prediction":
 
                     st.write(info[result])
 
-                    # PDF
+                    # PDF download
                     pdf_file = create_pdf(name, age, gender, state, phone, result, confidence)
 
                     with open(pdf_file, "rb") as f:
-                        st.download_button("Download PDF", f, "report.pdf")
+                        st.download_button("📄 Download PDF", f, "report.pdf")
 
     st.markdown("---")
     st.warning("⚠️ Not a medical diagnosis")
